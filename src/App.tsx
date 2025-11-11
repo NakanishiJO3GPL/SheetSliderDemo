@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useRef, useEffect, use } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FluentProvider, webLightTheme, Button, teamsDarkTheme } from "@fluentui/react-components";
 import "./App.css";
 import CardScroller from "./CardScroller";
 import type { Card } from "./CardScroller";
+import ArrowSelector from "./ArrowSelector";
 
 const cards_1st: Card[] = [
 	{ id: 0, content: "洗濯のみ" },
@@ -70,7 +71,9 @@ const App: React.FC = () => {
 		setSetIndex((prev) => Math.max(prev - 1, 0));
 	}
 
-  return (
+	const [selected, setSelected] = useState<string | number>("");
+
+	return (
 		<FluentProvider theme={teamsDarkTheme}>
 			<CardScroller
 				cards={cardSets[setIndex]}
@@ -79,8 +82,12 @@ const App: React.FC = () => {
 				onNextSet={nextSet}
 				onPrevSet={prevSet}
 			/>
+			<ArrowSelector
+				options={cardSets[setIndex].map(card => card.content)}
+				onChange={(value) => setSelected(value)} />
+			<p>選択中の値 : {selected}</p>
 		</FluentProvider>
-  );
+	);
 }
 
 export default App;

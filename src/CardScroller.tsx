@@ -1,50 +1,86 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
+import ArrowSelector from "./ArrowSelector";
+import { IoCaretBackSharp, IoCaretForwardSharp, IoLockClosedSharp } from "react-icons/io5";
+import { FaTemperatureThreeQuarters } from "react-icons/fa6";
+import Bottle1_icon from "./assets/parts/setting/Bottle1.png";
+import Bottle2_icon from "./assets/parts/setting/Bottle2.png";
+import Bottle3_icon from "./assets/parts/setting/Bottle3.png";
 import "./App.css";
 
 const CARDS_PRE_VIEW = 3;
 
 type Card = {
 	id: number;
-	content: string;
+	icon?: React.ReactNode;
+	title: string;
+	editable: boolean;
+	options: string[];
+	next: boolean;
 }
-interface Props {
+
+type Contents = {
+	id: number;
 	cards: Card[];
+	hint: string;
+}
+
+interface Props {
+	content: Contents;
 	selectedIndex: number;
+	course1: string;
+	course2: string;
 	onSelectedIndexChange: (index: number) => void;
-	onNextSet?: () => void;
+	onNextSet?: (index: number) => void;
 	onPrevSet?: () => void;
 }
 
 const CardScroller: React.FC<Props> = ({
-	cards, 
+	content, 
 	selectedIndex,
+	course1,
+	course2,
 	onSelectedIndexChange,
 	onNextSet, 
 	onPrevSet 
 }) => {
 	const [activeDot, setActiveDot] = useState(0);
+	const [editing, setEditing] = useState(false);
+	const [selectedOptions, setSelectedOptions] = useState<Record<number, string | number>>({});
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
 	// Calculate dots
-	const dotCount = useMemo(() => Math.max(1, Math.ceil(cards.length / CARDS_PRE_VIEW)), [cards]);
+	const dotCount = useMemo(() => Math.max(1, Math.ceil(content.cards.length / CARDS_PRE_VIEW)), [content.cards]);
 
 	// Update index using keyboard arrows
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
+			if (editing) {
+				// In editing mode, only handle Escape to exit
+				if (e.key === "ArrowUp") {
+					setEditing(false);
+				}
+				return;
+			}
+			
 			if (e.key === "ArrowRight") {
-				onSelectedIndexChange(Math.min(selectedIndex + 1, cards.length - 1));
+				onSelectedIndexChange(Math.min(selectedIndex + 1, content.cards.length - 1));
 			} else if (e.key === "ArrowLeft") {
 				onSelectedIndexChange(Math.max(selectedIndex - 1, 0));
-			} else if (e.key === "Enter") {
-				if (onNextSet) onNextSet();
-			} else if (e.key === "Backspace") {
+			} else if (e.key === "ArrowDown") {
+				const currentCard = content.cards[selectedIndex];
+				if (currentCard && currentCard.editable && currentCard.options.length > 0) {
+					setEditing(true);
+				} else if (currentCard.next && onNextSet) {
+					onNextSet(selectedIndex);
+				}
+			} else if (e.key === "ArrowUp") {
 				if (onPrevSet) onPrevSet();
 			}
 		};
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [cards, selectedIndex, onSelectedIndexChange, onNextSet, onPrevSet]);
+	}, [content.cards, selectedIndex, onSelectedIndexChange, onNextSet, onPrevSet, editing]);
 
 	// If card reached egde, scroll
 	useEffect(() => {
@@ -52,7 +88,7 @@ const CardScroller: React.FC<Props> = ({
 		if (selectedCard) {
 			selectedCard.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
 		}
-	}, [selectedIndex, cards]);
+	}, [selectedIndex, content.cards]);
 
 	// Update active dot based on scroll position
 	useEffect(() => {
@@ -70,92 +106,158 @@ const CardScroller: React.FC<Props> = ({
 		return () => el.removeEventListener("scroll", onScroll);
 	}, [dotCount]);
 
-	const cardStyle: React.CSSProperties = {
-		flex: "0 0 auto",
-		width: "220px",
-		height: "140px",
-		borderRadius: "4px",
-		background: "#000",
-		boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-	};
-
-	const contentStyle: React.CSSProperties = {
-		display: "flex",
-		width: "100%",
-		height: "100%",
-		justifyContent: "center",
-		alignItems: "center",
-		color: "#fff",
-		fontWeight: "bold",
-		fontSize: "30px",
-		lineHeight: "1.5",
-		textAlign: "center",
-		whiteSpace: "pre-line",
+	const styles: { [key: string]: React.CSSProperties } = {
+		status_container: {
+			display: "flex",
+			justifyContent: "space-between",
+			alignItems: "center",
+			marginBottom: "20px",
+		},
+		status_label: {
+			display: "flex",
+			color: "#fff",
+			gap: "12px",
+			fontSize: "26px",
+		},
+		status_icon: {
+			display: "flex",
+			gap: "8px",
+		},
+		frame: {
+			display: "flex",
+			overflowX: "auto",
+			border: "0px solid #fa7979ff",
+			borderRadius: "8px",
+			padding: "12px",
+			gap: "12px",
+			scrollBehavior: "smooth",
+			background: "#000000",
+		},
+		card: {
+			flex: "0 0 auto",
+			width: "220px",
+			height: "140px",
+			borderRadius: "4px",
+			background: "#000",
+		},
+		content: {
+			display: "flex",
+			width: "100%",
+			height: "100%",
+			justifyContent: "center",
+			alignItems: "center",
+			color: "#fff",
+			fontWeight: "normal",
+			fontSize: "30px",
+			lineHeight: "1.5",
+			textAlign: "center",
+			whiteSpace: "pre-line",
+		},
 	};
 
 	return (
 		<div style={{ width: "100%", maxWidth: 720, margin: "24px auto" }}>
-			<div
-				ref={containerRef}
-				className="scroll-hide"
-				style={{
-					display: "flex",
-					overflowX: "auto",
-					border: "1px solid #fa7979ff",
-					borderRadius: "8px",
-					padding: "12px",
-					gap: "12px",
-					scrollBehavior: "smooth",
-				}}
-			>
-				{cards.map((card, index) => (
+			<div style={styles.status_container}>
+				<div style={styles.status_label}>
+					<span>{course1}</span>
+					<span>{course2}</span>
+				</div>
+				<div style={styles.status_icon}>
+					<FaTemperatureThreeQuarters style={{ width: "20px", height: "24px" }} />
+					<IoLockClosedSharp style={{ width: "20px", height: "24px" }} />
+					<img src={Bottle1_icon} width="20" height="24"  />
+					<img src={Bottle2_icon} width="20" height="24"  />
+					<img src={Bottle3_icon} width="20" height="24"  />
+				</div>
+			</div>	
+			<div ref={containerRef} className="scroll-hide" style={styles.frame} >
+				{content.cards.map((card, index) => (
 					<div
 						key={card.id}
 						ref={(el) => { cardRefs.current[index] = el; }}
 						style={{
-							...cardStyle,
+							...styles.card,
 							border: index === selectedIndex ? "2px solid #fff" : "1px solid #000", 
 						}}
 					>
-					<div style={contentStyle}>
-						  {card.content}
+						<div style={styles.content}>
+							{index === selectedIndex && editing && card.editable ? (
+								<ArrowSelector
+									title={card.title}
+									options={card.options}
+									onChange={(selected) => {
+										setSelectedOptions(prev => ({
+											...prev,
+											[card.id]: selected
+										}));
+									}}
+									leftIcon={<IoCaretBackSharp />}
+									rightIcon={<IoCaretForwardSharp />}
+								/>
+							) : 
+							(
+								<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+									<div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: '4px' }}>
+										{card.icon && <div>{card.icon}</div>}
+										{card.title}
+									</div>
+									{card.editable && (
+										<div style={{ fontSize: '20px', color: '#aaa' }}>
+											{selectedOptions[card.id] !== undefined 
+												? selectedOptions[card.id] 
+												: card.options[0]}
+										</div>
+									)}
+								</div>
+							)}
+						</div>
 					</div>
-				</div>
-			))}
-		</div>
-		
-		<div
-		  aria-label="Scroll position"
-			style={{
+				))}
+			</div>
+			
+			<div style={{
 				display: "flex",
 				justifyContent: "center",
 				alignItems: "center",
-				gap: 8,
-				marginTop: 12,
+				fontSize: "30px",
+				marginTop: "16px",
 			}}
-		>
-			{Array.from({ length: dotCount }, (_, i) => {
-				const isActive = i === activeDot;
-				return (
-					<button
-						key={i}
-						style={{
-							width: 12,
-							height: 12,
-							borderRadius: "50%",
-							border: "1px solid #333",
-							background: isActive ? "#fff" : "#333",
-							padding: 0,
-						}}
-						aria-label={`Scroll to section ${i + 1}`}
-						title={`Go to position ${i + 1}`}	
-					/>
-				);
-			})}
-		</div>
+			>
+				{content.hint}
+			</div>
+
+			<div
+			  aria-label="Scroll position"
+				style={{
+					display: "flex",
+					justifyContent: "center",
+					alignItems: "center",
+					gap: 8,
+					marginTop: 12,
+				}}
+			>
+				{Array.from({ length: dotCount }, (_, i) => {
+					const isActive = i === activeDot;
+					return (
+						<button
+							key={i}
+							style={{
+								width: 12,
+								height: 12,
+								borderRadius: "50%",
+								border: "1px solid #000000",
+								background: isActive ? "#fff" : "#333",
+								padding: 0,
+							}}
+							aria-label={`Scroll to section ${i + 1}`}
+							title={`Go to position ${i + 1}`}	
+						/>
+					);
+				})}
+			</div>
 		</div>
 	);
 };
 
 export default CardScroller;
-export type { Card };
+export type { Card, Contents };

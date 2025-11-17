@@ -58,8 +58,8 @@ const App: React.FC = () => {
 	const [selectedIndices, setSelectedIndices] = useState<number[]>(
 		contentsSet.map(() => 0)
 	);
-	const [course1, setCourse1] = useState<string>(contentsSet[0].cards[0].title);
-	const [course2, setCourse2] = useState<string>(contentsSet[1].cards[0].title);
+	const [course1, setCourse1] = useState<string>("");
+	const [course2, setCourse2] = useState<string>("");
 
 	const currentSelectedIndex = selectedIndices[setIndex];
 

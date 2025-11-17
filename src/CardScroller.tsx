@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
+import { listen } from "@tauri-apps/api/event";
 import ArrowSelector from "./ArrowSelector";
 import { IoCaretBackSharp, IoCaretForwardSharp, IoLockClosedSharp } from "react-icons/io5";
 import { FaTemperatureThreeQuarters } from "react-icons/fa6";
@@ -46,6 +47,7 @@ const CardScroller: React.FC<Props> = ({
 	const [activeDot, setActiveDot] = useState(0);
 	const [editing, setEditing] = useState(false);
 	const [selectedOptions, setSelectedOptions] = useState<Record<number, string | number>>({});
+	const [editingOptionIndex, setEditingOptionIndex] = useState(0);
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -54,33 +56,63 @@ const CardScroller: React.FC<Props> = ({
 
 	// Update index using keyboard arrows
 	useEffect(() => {
-		const handleKeyDown = (e: KeyboardEvent) => {
+		const unlisten = listen("key-pressed", (event) => {
 			if (editing) {
-				// In editing mode, only handle Escape to exit
-				if (e.key === "ArrowUp") {
+				// In editing mode, handle arrow keys for option selection
+				const currentCard = content.cards[selectedIndex];
+				if (event.payload === "Left") {
+					setEditingOptionIndex((prev) => {
+						const next = Math.max(prev - 1, 0);
+						setSelectedOptions((opts) => ({
+							...opts,
+							[currentCard.id]: currentCard.options[next]
+						}));
+						return next;
+					});
+				} else if (event.payload === "Right") {
+					setEditingOptionIndex((prev) => {
+						const next = Math.min(prev + 1, currentCard.options.length - 1);
+						setSelectedOptions((opts) => ({
+							...opts,
+							[currentCard.id]: currentCard.options[next]
+						}));
+						return next;
+					});
+				} else if (event.payload === "Return" || event.payload === "Ok") {
 					setEditing(false);
 				}
 				return;
 			}
-			
-			if (e.key === "ArrowRight") {
-				onSelectedIndexChange(Math.min(selectedIndex + 1, content.cards.length - 1));
-			} else if (e.key === "ArrowLeft") {
+
+			// Normal mode: card navigation
+			if (event.payload === "Left") {
 				onSelectedIndexChange(Math.max(selectedIndex - 1, 0));
-			} else if (e.key === "ArrowDown") {
+			}
+			else if (event.payload === "Right") {
+				onSelectedIndexChange(Math.min(selectedIndex + 1, content.cards.length - 1));
+			}
+			else if (event.payload === "Ok") {
 				const currentCard = content.cards[selectedIndex];
 				if (currentCard && currentCard.editable && currentCard.options.length > 0) {
+					// Enter editing mode and initialize with current or default value
+					const currentValue = selectedOptions[currentCard.id];
+					const currentIdx = currentValue !== undefined 
+						? currentCard.options.indexOf(String(currentValue))
+						: 0;
+					setEditingOptionIndex(currentIdx >= 0 ? currentIdx : 0);
 					setEditing(true);
 				} else if (currentCard.next && onNextSet) {
 					onNextSet(selectedIndex);
 				}
-			} else if (e.key === "ArrowUp") {
+			}
+			else if (event.payload === "Return") {
 				if (onPrevSet) onPrevSet();
 			}
-		};
-		window.addEventListener("keydown", handleKeyDown);
-		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [content.cards, selectedIndex, onSelectedIndexChange, onNextSet, onPrevSet, editing]);
+		});
+		return () => {
+			unlisten.then((f) => f());
+		}
+	}, [content.cards, selectedIndex, onSelectedIndexChange, onNextSet, onPrevSet, editing, selectedOptions]);
 
 	// If card reached egde, scroll
 	useEffect(() => {
@@ -181,19 +213,15 @@ const CardScroller: React.FC<Props> = ({
 						}}
 					>
 						<div style={styles.content}>
-							{index === selectedIndex && editing && card.editable ? (
-								<ArrowSelector
-									title={card.title}
-									options={card.options}
-									onChange={(selected) => {
-										setSelectedOptions(prev => ({
-											...prev,
-											[card.id]: selected
-										}));
-									}}
-									leftIcon={<IoCaretBackSharp />}
-									rightIcon={<IoCaretForwardSharp />}
-								/>
+						{index === selectedIndex && editing && card.editable ? (
+							<ArrowSelector
+								title={card.title}
+								options={card.options}
+								selectedIndex={editingOptionIndex}
+								onIndexChange={setEditingOptionIndex}
+								leftIcon={<IoCaretBackSharp />}
+								rightIcon={<IoCaretForwardSharp />}
+							/>
 							) : 
 							(
 								<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

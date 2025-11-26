@@ -65,7 +65,7 @@ pub fn run() {
 
 // Convert raw HID value to keycode string
 // Translates the encoder position value into corresponding key events
-fn conv_keycode(prev: i32, key_counter: &mut [u8; 4], value: i32) -> Option<String> {
+fn conv_keycode(_prev: i32, key_counter: &mut [u8; 4], value: i32) -> Option<String> {
     // Direction depends on previous value
 	/*
     if value > 2570 && value <= 2860{

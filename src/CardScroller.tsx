@@ -149,7 +149,7 @@ const CardScroller: React.FC<Props> = ({
 			display: "flex",
 			color: "#fff",
 			gap: "12px",
-			fontSize: "26px",
+			fontSize: "50px",
 		},
 		status_icon: {
 			display: "flex",
@@ -167,9 +167,9 @@ const CardScroller: React.FC<Props> = ({
 		},
 		card: {
 			flex: "0 0 auto",
-			width: "220px",
-			height: "140px",
-			borderRadius: "4px",
+			width: "400px",
+			height: "200px",
+			borderRadius: "10px",
 			background: "#000",
 		},
 		content: {
@@ -180,7 +180,7 @@ const CardScroller: React.FC<Props> = ({
 			alignItems: "center",
 			color: "#fff",
 			fontWeight: "normal",
-			fontSize: "30px",
+			fontSize: "50px",
 			lineHeight: "1.5",
 			textAlign: "center",
 			whiteSpace: "pre-line",
@@ -188,18 +188,18 @@ const CardScroller: React.FC<Props> = ({
 	};
 
 	return (
-		<div style={{ width: "100%", maxWidth: 720, margin: "24px auto" }}>
+		<div style={{ marginTop: "80px", width: "100%", maxWidth: 1200, margin: "24px auto" }}>
 			<div style={styles.status_container}>
 				<div style={styles.status_label}>
 					<span>{course1}</span>
 					<span>{course2}</span>
 				</div>
 				<div style={styles.status_icon}>
-					<FaTemperatureThreeQuarters style={{ width: "20px", height: "24px" }} />
-					<IoLockClosedSharp style={{ width: "20px", height: "24px" }} />
-					<img src={Bottle1_icon} width="20" height="24"  />
-					<img src={Bottle2_icon} width="20" height="24"  />
-					<img src={Bottle3_icon} width="20" height="24"  />
+					<FaTemperatureThreeQuarters style={{ width: "40px", height: "44px" }} />
+					<IoLockClosedSharp style={{ width: "40px", height: "44px" }} />
+					<img src={Bottle1_icon} width="40" height="44"  />
+					<img src={Bottle2_icon} width="40" height="44"  />
+					<img src={Bottle3_icon} width="40" height="44"  />
 				</div>
 			</div>	
 			<div ref={containerRef} className="scroll-hide" style={styles.frame} >
@@ -209,7 +209,7 @@ const CardScroller: React.FC<Props> = ({
 						ref={(el) => { cardRefs.current[index] = el; }}
 						style={{
 							...styles.card,
-							border: index === selectedIndex ? "2px solid #fff" : "1px solid #000", 
+							border: index === selectedIndex ? "5px solid #fff" : "1px solid #000", 
 						}}
 					>
 						<div style={styles.content}>
@@ -230,7 +230,7 @@ const CardScroller: React.FC<Props> = ({
 										{card.title}
 									</div>
 									{card.editable && (
-										<div style={{ fontSize: '20px', color: '#aaa' }}>
+										<div style={{ fontSize: '50px', color: '#aaa' }}>
 											{selectedOptions[card.id] !== undefined 
 												? selectedOptions[card.id] 
 												: card.options[0]}
@@ -247,8 +247,8 @@ const CardScroller: React.FC<Props> = ({
 				display: "flex",
 				justifyContent: "center",
 				alignItems: "center",
-				fontSize: "30px",
-				marginTop: "16px",
+				fontSize: "50px",
+				marginTop: "50px",
 			}}
 			>
 				{content.hint}
@@ -261,7 +261,7 @@ const CardScroller: React.FC<Props> = ({
 					justifyContent: "center",
 					alignItems: "center",
 					gap: 8,
-					marginTop: 12,
+					marginTop: 50,
 				}}
 			>
 				{Array.from({ length: dotCount }, (_, i) => {

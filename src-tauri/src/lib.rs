@@ -2,6 +2,9 @@ use tauri::Emitter;
 use hidapi::HidApi;
 use tokio::task;
 
+mod keystate;
+use keystate::{KeyState, KeyStateMachine};
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -17,9 +20,8 @@ pub fn run() {
                         .expect("Failed to open HID device");
 
                     let mut buf = [0u8; 64];
-                    let mut last_value: i32 = -1;
-					let mut last_keycode: String = "".to_string();
-					let mut key_counter = [0u8; 4];
+                    let mut pos_buf = [0i32; 10];
+					let mut key_state = KeyStateMachine::default();
 
                     loop {
                         // Read data from HID device
@@ -33,27 +35,31 @@ pub fn run() {
                         }
                         
                         // Parse raw value from 2 bytes (little-endian)
-						// buf[0] is report ID, buf[1] and buf[2] contain the value
-                        let value = i32::from_le_bytes([buf[1], buf[2], 0, 0]);
-                        
-						println!("value: {}", value);
+						// buf[0] is report ID, 
+						// buf[1] and buf[2] contain the value
+						// buf[3] contains event type (not used currently)
+                        let pos = i32::from_le_bytes([buf[1], buf[2], 0, 0]);
+
+                        // Calculate 10-point moving average
+                        pos_buf.rotate_right(1);
+                        pos_buf[0] = pos;
+                        let pos_ave = pos_buf.iter().sum::<i32>() / (pos_buf.len() as i32);
+
+						key_state.update(pos_ave);
+                        let is_pressed = key_state.is_pressed();
+                        let current = key_state.current_state();
+
+						// for DEBUG
+                        if is_pressed {
+						    app_handle.emit("adc-value", (pos_ave, current)).expect("Failed to emit adc-value event");
+                        }
 
                         // Convert to keycode and emit event if valid
-                        if let Some(keycode) = conv_keycode(last_value, &mut key_counter, value) {
-							if keycode != last_keycode {
-								println!("Emitting keycode: {}", keycode);
-                            	app_handle
-                            	    .emit("key-pressed", keycode.clone())
-                            	    .expect("Failed to emit event");
-								last_keycode = keycode;
-							}
+                        if let Some(keycode) = conv_keycode(pos, is_pressed) {
+                          	app_handle
+                           	    .emit("key-pressed", keycode.clone())
+                           	    .expect("Failed to emit event");
                         }
-						else {
-							last_keycode = "".to_string();
-						}
-                        
-                        // Update last known value
-                        last_value = value;
                     }
                 });
             });
@@ -65,7 +71,7 @@ pub fn run() {
 
 // Convert raw HID value to keycode string
 // Translates the encoder position value into corresponding key events
-fn conv_keycode(_prev: i32, key_counter: &mut [u8; 4], value: i32) -> Option<String> {
+fn conv_keycode(pos: i32, is_pressed: bool) -> Option<String> {
     // Direction depends on previous value
 	/*
     if value > 2570 && value <= 2860{
@@ -78,64 +84,26 @@ fn conv_keycode(_prev: i32, key_counter: &mut [u8; 4], value: i32) -> Option<Str
 	}
 	*/
 
-	const CHATA: u8 = 5;
-	match value {
-		3080..=3180 => {
+	match (pos, is_pressed) {
+		(3070..=3120, true) => {
 			// Return button press
-			key_counter[0] = key_counter[0].wrapping_add(1);
-			if key_counter[0] == CHATA {
-				for c in key_counter.iter_mut() {
-					*c = 0;
-				}
-				return Some("Return".to_string());
-			} else {
-				return None;
-			}
+			Some("Return".to_string())
 		},
-		2870..=2886 => {
+		(2840..=2910, true) => {
 			// Left rotation
-			key_counter[1] = key_counter[1].wrapping_add(1);
-			if key_counter[1] == CHATA {
-				for c in key_counter.iter_mut() {
-					*c = 0;
-				}
-				return Some("Left".to_string());
-			} else {
-				return None;
-			}
+			Some("Left".to_string())
 		},
-		2534..=2560 => {
+		(2500..=2550, true) => {
 			// Right rotation
-			key_counter[2] = key_counter[2].wrapping_add(1);
-			if key_counter[2] == CHATA {
-				for c in key_counter.iter_mut() {
-					*c = 0;
-				}
-				return Some("Right".to_string());
-			} else {
-				return None;
-			}
+			Some("Right".to_string())
 		},
-		2250..=2350 => {
+		(2340..=2440, true) => {
 			// Ok button press
-			key_counter[3] = key_counter[3].wrapping_add(1);
-			if key_counter[3] == CHATA {
-				for c in key_counter.iter_mut() {
-					*c = 0;
-				}
-				return Some("Ok".to_string());
-			} else {
-				return None;
-			}
+			Some("Ok".to_string())
 		},
 		_ => {
-			// Reset counters if out of range
-			for c in key_counter.iter_mut() {
-				*c = 0;
-			}
+			// Outside defined ranges
+			None
 		}
 	}
-    
-    // Outside all defined ranges
-    None
 }

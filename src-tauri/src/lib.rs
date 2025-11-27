@@ -19,45 +19,48 @@ pub fn run() {
                     let device = api.open(vendor_id, product_id)
                         .expect("Failed to open HID device");
 
-                    let mut buf = [0u8; 64];
-                    let mut pos_buf = [0i32; 10];
+                    let mut hid_buf = [0u8; 64];
+                    let mut pos_buf = [0i32; 30];
+
 					let mut key_state = KeyStateMachine::default();
 
                     loop {
                         // Read data from HID device
-                        let Ok(size) = device.read(&mut buf) else {
+                        let Ok(size) = device.read(&mut hid_buf) else {
                             continue;
                         };
                         
-                        // Ensure we have at least 2 bytes of data
-                        if size < 2 {
+                        // Ensure we have at least 3 bytes of data
+                        if size < 3 {
                             continue;
                         }
                         
                         // Parse raw value from 2 bytes (little-endian)
-						// buf[0] is report ID, 
-						// buf[1] and buf[2] contain the value
-						// buf[3] contains event type (not used currently)
-                        let pos = i32::from_le_bytes([buf[1], buf[2], 0, 0]);
+						// hid_buf[0] is report ID, 
+						// hid_buf[1] and hid_buf[2] contain the value
+						// hid_buf[3] contains event type (not used currently)
+                        let pos = i32::from_le_bytes([hid_buf[1], hid_buf[2], 0, 0]);
 
                         // Calculate 10-point moving average
                         pos_buf.rotate_right(1);
                         pos_buf[0] = pos;
                         let pos_ave = pos_buf.iter().sum::<i32>() / (pos_buf.len() as i32);
+                        let slider_pos = f32::round((pos_ave as f32) / 10.0) as i32;
 
 						key_state.update(pos_ave);
                         let is_pressed = key_state.is_pressed();
-                        let current = key_state.current_state();
-
-						// for DEBUG
-                        if is_pressed {
-						    app_handle.emit("adc-value", (pos_ave, current)).expect("Failed to emit adc-value event");
-                        }
+                        let is_touched = key_state.is_touched();
 
                         // Convert to keycode and emit event if valid
                         if let Some(keycode) = conv_keycode(pos, is_pressed) {
                           	app_handle
                            	    .emit("key-pressed", keycode.clone())
+                           	    .expect("Failed to emit event");
+                        }
+                        else if let Some(slider_code) = conv_slider_code(slider_pos, is_touched) {
+                            println!("Emitting slider code: {}", slider_code);
+                          	app_handle
+                           	    .emit("slider-move", slider_code)
                            	    .expect("Failed to emit event");
                         }
                     }
@@ -72,18 +75,6 @@ pub fn run() {
 // Convert raw HID value to keycode string
 // Translates the encoder position value into corresponding key events
 fn conv_keycode(pos: i32, is_pressed: bool) -> Option<String> {
-    // Direction depends on previous value
-	/*
-    if value > 2570 && value <= 2860{
-        let diff = 16;
-        if prev + diff < value {
-            return Some("Left".to_string());
-        } else if prev - diff > value {
-            return Some("Right".to_string());
-		}
-	}
-	*/
-
 	match (pos, is_pressed) {
 		(3070..=3120, true) => {
 			// Return button press
@@ -106,4 +97,15 @@ fn conv_keycode(pos: i32, is_pressed: bool) -> Option<String> {
 			None
 		}
 	}
+}
+
+fn conv_slider_code(slider_pos: i32, is_pressed: bool) -> Option<i32> {
+    const SLIDER_MIN: i32 = 254;
+    const SLIDER_MAX: i32 = 277;
+    const DIV: i32 = 2;
+    if SLIDER_MIN <= slider_pos && slider_pos <= SLIDER_MAX && is_pressed {
+        Some((SLIDER_MAX - slider_pos) / DIV)
+    } else {
+        None
+    }
 }

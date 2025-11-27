@@ -53,7 +53,7 @@ impl KeyStateMachine {
         self.state == KeyState::Pressed && self.prev_state != KeyState::Pressed
     }
 
-    pub fn current_state(&self) -> u8 {
-        self.state as u8
+    pub fn is_touched(&self) -> bool {
+        self.state == KeyState::Pressed && self.prev_state == KeyState::Pressed
     }
 }

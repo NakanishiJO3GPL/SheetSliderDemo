@@ -213,7 +213,7 @@ const CardScroller: React.FC<Props> = ({
 	};
 
 	return (
-		<div style={{ marginTop: "80px", width: "100%", maxWidth: 1200, margin: "24px auto" }}>
+		<div style={{ marginTop: "550px", width: "100%", maxWidth: 1200, margin: "24px auto" }}>
 			<div style={styles.status_container}>
 				<div style={styles.status_label}>
 					<span>{course1}</span>

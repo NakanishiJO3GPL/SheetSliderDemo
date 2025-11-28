@@ -3,13 +3,10 @@ use hidapi::HidApi;
 use tokio::task;
 
 mod keystate;
-use keystate::{KeyState, KeyStateMachine};
+use keystate::KeyStateMachine;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    const SLIDER_MIN: i32 = 254;
-    const SLIDER_MAX: i32 = 277;
-
     tauri::Builder::default()
         .setup(|app| {
             let app_handle = app.handle().clone();

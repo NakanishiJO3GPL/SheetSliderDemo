@@ -49,10 +49,11 @@ const CardScroller: React.FC<Props> = ({
 	const [selectedOptions, setSelectedOptions] = useState<Record<number, string | number>>({});
 	const [editingOptionIndex, setEditingOptionIndex] = useState(0);
 	// for DEBUG
+	{/*
 	const [adcValue, setAdcValue] = useState<number>(0);
 	const [keyCode, setKeyCode] = useState<string>("");
 	const [keyEvent, setKeyEvent] = useState<number>(0);
-
+	*/}
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -66,7 +67,6 @@ const CardScroller: React.FC<Props> = ({
 				// In editing mode, handle arrow keys for option selection
 				const currentCard = content.cards[selectedIndex];
 				if (event.payload === "Left") {
-					setKeyCode("Left");
 					setEditingOptionIndex((prev) => {
 						const next = Math.max(prev - 1, 0);
 						setSelectedOptions((opts) => ({
@@ -76,7 +76,6 @@ const CardScroller: React.FC<Props> = ({
 						return next;
 					});
 				} else if (event.payload === "Right") {
-					setKeyCode("Right");
 					setEditingOptionIndex((prev) => {
 						const next = Math.min(prev + 1, currentCard.options.length - 1);
 						setSelectedOptions((opts) => ({
@@ -93,15 +92,12 @@ const CardScroller: React.FC<Props> = ({
 
 			// Normal mode: card navigation
 			if (event.payload === "Left") {
-				setKeyCode("Left");
 				onSelectedIndexChange(Math.max(selectedIndex - 1, 0));
 			}
 			else if (event.payload === "Right") {
-				setKeyCode("Right");
 				onSelectedIndexChange(Math.min(selectedIndex + 1, content.cards.length - 1));
 			}
 			else if (event.payload === "Ok") {
-				setKeyCode("Ok");
 				const currentCard = content.cards[selectedIndex];
 				if (currentCard && currentCard.editable && currentCard.options.length > 0) {
 					// Enter editing mode and initialize with current or default value
@@ -116,7 +112,6 @@ const CardScroller: React.FC<Props> = ({
 				}
 			}
 			else if (event.payload === "Return") {
-				setKeyCode("Return");
 				if (onPrevSet) onPrevSet();
 			}
 		});
@@ -125,19 +120,6 @@ const CardScroller: React.FC<Props> = ({
 			unlisten.then((f) => f());
 		}
 	}, [content.cards, selectedIndex, onSelectedIndexChange, onNextSet, onPrevSet, editing, selectedOptions]);
-
-	// for DEBUG
-	useEffect(() => {
-		const unlistenDebug = listen("adc-value", (event) => {
-			const [adcVal, keyEvt] = event.payload as [number, number];
-			setAdcValue(adcVal);
-			setKeyEvent(keyEvt);
-		});
-
-		return () => {
-			unlistenDebug.then((f) => f());
-		}
-	}, []);
 
 	// If card reached egde, scroll
 	useEffect(() => {
@@ -308,21 +290,6 @@ const CardScroller: React.FC<Props> = ({
 					);
 				})}
 			</div>
-
-			{/* for DEBUG 
-			<div style={{
-				display: "flex",
-				justifyContent: "center",
-				alignItems: "center",
-				fontSize: "25px",
-				marginTop: "10px",
-			}}
-			>
-				<span style={{marginRight: "10px"}}>{keyCode}</span>
-				<span style={{marginRight: "10px"}}>{adcValue}</span>
-				<span style={{marginRight: "10px"}}>{keyEvent}</span>
-			</div>
-			*/}
 		</div>
 	);
 };

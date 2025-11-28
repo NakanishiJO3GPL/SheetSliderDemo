@@ -126,32 +126,6 @@ const CardScroller: React.FC<Props> = ({
 		}
 	}, [content.cards, selectedIndex, onSelectedIndexChange, onNextSet, onPrevSet, editing, selectedOptions]);
 
-	useEffect(() => {
-		const unlisten = listen("slider-move", (event) => {
-			const sliderVal = event.payload as number;
-			if (editing) {
-				// In editing mode, handle arrow keys for option selection
-				const currentCard = content.cards[selectedIndex];
-				setEditingOptionIndex(() => {
-					const next = Math.min(Math.max(sliderVal, 0), currentCard.options.length - 1);
-					setSelectedOptions((opts) => ({
-						...opts,
-						[currentCard.id]: currentCard.options[next]
-					}));
-					return next;
-				});
-				return;
-			}
-			else {
-				onSelectedIndexChange(Math.min(Math.max(Math.floor(sliderVal / 2), 0), content.cards.length - 1));
-			}
-		});
-
-		return () => {
-			unlisten.then((f) => f());
-		}
-	}, [content.cards, onSelectedIndexChange]);
-	
 	// for DEBUG
 	useEffect(() => {
 		const unlistenDebug = listen("adc-value", (event) => {

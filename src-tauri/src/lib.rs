@@ -7,6 +7,9 @@ use keystate::{KeyState, KeyStateMachine};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    const SLIDER_MIN: i32 = 254;
+    const SLIDER_MAX: i32 = 277;
+
     tauri::Builder::default()
         .setup(|app| {
             let app_handle = app.handle().clone();
@@ -20,9 +23,9 @@ pub fn run() {
                         .expect("Failed to open HID device");
 
                     let mut hid_buf = [0u8; 64];
-                    let mut pos_buf = [0i32; 30];
-
 					let mut key_state = KeyStateMachine::default();
+                    let mut pos_buf = [0i32; 20];
+                    let mut prev_slider_pos = 0;
 
                     loop {
                         // Read data from HID device
@@ -35,32 +38,29 @@ pub fn run() {
                             continue;
                         }
                         
-                        // Parse raw value from 2 bytes (little-endian)
-						// hid_buf[0] is report ID, 
-						// hid_buf[1] and hid_buf[2] contain the value
-						// hid_buf[3] contains event type (not used currently)
+						// hid_buf[0] : report ID, 
+						// hid_buf[1],[2] : ADC value (LSB, MSB)
+						// hid_buf[3] : event type (not used currently)
                         let pos = i32::from_le_bytes([hid_buf[1], hid_buf[2], 0, 0]);
 
                         // Calculate 10-point moving average
                         pos_buf.rotate_right(1);
                         pos_buf[0] = pos;
                         let pos_ave = pos_buf.iter().sum::<i32>() / (pos_buf.len() as i32);
-                        let slider_pos = f32::round((pos_ave as f32) / 10.0) as i32;
-
+                        
 						key_state.update(pos_ave);
                         let is_pressed = key_state.is_pressed();
                         let is_touched = key_state.is_touched();
+                        
+                        // Calculate slider direction
+                        let slider_pos = f32::round((pos_ave as f32) / 10.0) as i32;
+                        let slider_dir = get_slider_dir(prev_slider_pos, slider_pos, is_touched);
+                        prev_slider_pos = slider_pos;
 
                         // Convert to keycode and emit event if valid
-                        if let Some(keycode) = conv_keycode(pos, is_pressed) {
+                        if let Some(keycode) = conv_keycode(pos, slider_dir, is_pressed) {
                           	app_handle
                            	    .emit("key-pressed", keycode.clone())
-                           	    .expect("Failed to emit event");
-                        }
-                        else if let Some(slider_code) = conv_slider_code(slider_pos, is_touched) {
-                            println!("Emitting slider code: {}", slider_code);
-                          	app_handle
-                           	    .emit("slider-move", slider_code)
                            	    .expect("Failed to emit event");
                         }
                     }
@@ -72,40 +72,54 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-// Convert raw HID value to keycode string
-// Translates the encoder position value into corresponding key events
-fn conv_keycode(pos: i32, is_pressed: bool) -> Option<String> {
-	match (pos, is_pressed) {
-		(3070..=3120, true) => {
-			// Return button press
-			Some("Return".to_string())
-		},
-		(2840..=2910, true) => {
-			// Left rotation
-			Some("Left".to_string())
-		},
-		(2500..=2550, true) => {
-			// Right rotation
-			Some("Right".to_string())
-		},
-		(2340..=2440, true) => {
-			// Ok button press
-			Some("Ok".to_string())
-		},
-		_ => {
-			// Outside defined ranges
-			None
-		}
+fn conv_keycode(pos: i32, slider_dir: i32, is_pressed: bool) -> Option<String> {
+    if slider_dir != 0 {
+        // Slider moved
+        Some(format!("{}", if slider_dir > 0 { "Left" } else { "Right" }))
+    }
+    else if is_pressed {
+    	match pos {
+    	    3070..=3120 => {
+    			// Return button press
+    			Some("Return".to_string())
+    		},
+    		2840..=2910 => {
+    			// Left rotation
+    			Some("Left".to_string())
+    		},
+    		2500..=2550 => {
+    			// Right rotation
+    			Some("Right".to_string())
+    		},
+    		2340..=2440 => {
+    			// Ok button press
+    			Some("Ok".to_string())
+    		},
+    		_ => {
+    			// Outside defined ranges
+    			None
+    		}
+        }
 	}
+    else {
+        None
+    }
 }
 
-fn conv_slider_code(slider_pos: i32, is_pressed: bool) -> Option<i32> {
-    const SLIDER_MIN: i32 = 254;
-    const SLIDER_MAX: i32 = 277;
-    const DIV: i32 = 2;
-    if SLIDER_MIN <= slider_pos && slider_pos <= SLIDER_MAX && is_pressed {
-        Some((SLIDER_MAX - slider_pos) / DIV)
+fn get_slider_dir(prev: i32, current: i32, is_touched: bool) -> i32 {
+    const SLIDER_MIN: i32 = 64;
+    const SLIDER_MAX: i32 = 72;
+    const DIV: i32 = 4;
+    let prev_div = prev / DIV;
+    let current_div = current / DIV;
+    println!("prev_div: {}, current_div: {}", prev_div, current_div);
+    if !is_touched {
+        0
+    } else if SLIDER_MIN <= current_div && current_div <= SLIDER_MAX {
+        if current_div > prev_div { 1 } 
+        else if current_div < prev_div { -1 } 
+        else { 0 }
     } else {
-        None
+        0
     }
 }

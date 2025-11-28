@@ -13,8 +13,8 @@
     "windows": [
       {
         "title": "sheetsliderdemo",
-        "width": 1464,
-        "height": 617,
+        "width": 2404,
+        "height": 1080,
 		"resizable": true,
 		"fullscreen": false
       }

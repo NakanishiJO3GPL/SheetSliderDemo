@@ -213,7 +213,7 @@ const CardScroller: React.FC<Props> = ({
 	};
 
 	return (
-		<div style={{ marginTop: "550px", width: "100%", maxWidth: 1200, margin: "24px auto" }}>
+		<div style={{ margin: "550px auto", width: "100%", maxWidth: 1200 }}>
 			<div style={styles.status_container}>
 				<div style={styles.status_label}>
 					<span>{course1}</span>
@@ -308,7 +308,8 @@ const CardScroller: React.FC<Props> = ({
 					);
 				})}
 			</div>
-			
+
+			{/* for DEBUG 
 			<div style={{
 				display: "flex",
 				justifyContent: "center",
@@ -321,6 +322,7 @@ const CardScroller: React.FC<Props> = ({
 				<span style={{marginRight: "10px"}}>{adcValue}</span>
 				<span style={{marginRight: "10px"}}>{keyEvent}</span>
 			</div>
+			*/}
 		</div>
 	);
 };

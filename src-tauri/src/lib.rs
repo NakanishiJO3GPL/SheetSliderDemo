@@ -53,7 +53,7 @@ pub fn run() {
                         let is_touched = key_state.is_touched();
                         
                         // Calculate slider direction
-                        let slider_pos = f32::round((pos_ave as f32) / 10.0) as i32;
+                        let slider_pos = f32::round((pos as f32) / 10.0) as i32;
                         let slider_dir = get_slider_dir(prev_slider_pos, slider_pos, is_touched);
                         prev_slider_pos = slider_pos;
 
@@ -107,19 +107,22 @@ fn conv_keycode(pos: i32, slider_dir: i32, is_pressed: bool) -> Option<String> {
 }
 
 fn get_slider_dir(prev: i32, current: i32, is_touched: bool) -> i32 {
-    const SLIDER_MIN: i32 = 64;
-    const SLIDER_MAX: i32 = 72;
-    const DIV: i32 = 4;
-    let prev_div = prev / DIV;
-    let current_div = current / DIV;
-    println!("prev_div: {}, current_div: {}", prev_div, current_div);
+    const SLIDER_MIN: i32 = 254;
+    const SLIDER_MAX: i32 = 288;
+    const SENSITIVITY: i32 = 6;
+    let prev_s = prev / SENSITIVITY;
+    let current_s = current / SENSITIVITY;
+
+    let key =
     if !is_touched {
         0
-    } else if SLIDER_MIN <= current_div && current_div <= SLIDER_MAX {
-        if current_div > prev_div { 1 } 
-        else if current_div < prev_div { -1 } 
+    } else if SLIDER_MIN <= current && current <= SLIDER_MAX {
+        if current_s > prev_s { 1 } 
+        else if current_s < prev_s { -1 } 
         else { 0 }
     } else {
         0
-    }
+    };
+
+    key
 }
